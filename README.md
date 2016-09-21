@@ -16,10 +16,38 @@ brew upgrade
 brew install python
 pip install -U pyopenssl boto
 ```
-##Check your ansible cfg file.
+##Check your ansible cfg file to ensure host_key_checking = False
 
 ```
 anurags-MBP-2:~ anuragsaran$ cat ~/.ansible.cfg 
+# config file for ansible -- http://ansible.com/
+# ==============================================
+
+# This config file provides examples for running
+# the OpenShift playbooks with the provided
+# inventory scripts. Only global defaults are
+# left uncommented
+
+[defaults]
+# Add the roles directory to the roles path
+roles_path = roles/
+
+# Set the log_path
+log_path = /tmp/ansible.log
+
+forks = 10
+host_key_checking = False
+nocows = 1
+# Need to handle:
+# inventory - derive from OO_ANSIBLE_DIRECTORY env var
+# callback_plugins - derive from pkg_resource.resource_filename
+# private_key_file - prompt if missing
+# remote_tmp - set if provided by user (cli)
+# ssh_args - set if provided by user (cli)
+control_path=/tmp
+
+[ssh_connection]
+control_path = %(directory)s/%%h-%%r
 ```
 
 ## create the config file so that you dont have to provide user and pem file.
