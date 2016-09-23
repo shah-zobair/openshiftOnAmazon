@@ -122,3 +122,10 @@ zone=tryopenshift.online' \
 playbooks/aws/openshift-cluster/terminate.yml
 ```
 
+## Validate the environment
+Creating the OCP PaaS will take about one hour; once complete you will be able to log in to OCP 3.2 via:
+```
+hostname: https://master-1.<cluster_id>.<zone>:8443/
+username: andrew
+password: r3dh4t1!
+```
