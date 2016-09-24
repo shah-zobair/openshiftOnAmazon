@@ -82,6 +82,7 @@ Master nodes will go to 21, 22, Infra Nodes:60 ETCD:40
 
 ```
 >> cd /Users/anuragsaran/Documents/MW/os-demos/openshift-ansible
+------------>  Make sure to increment cluster_id=oscid and private_subnet=172.31.16 
 >> ansible-playbook  \
 -i inventory/aws/hosts \
 -e \
