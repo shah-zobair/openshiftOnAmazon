@@ -66,7 +66,7 @@ Host *.tryopenshift.online
 ## Now try to ssh aws node and it should work
 ```
 >> ssh aws-dns-name
-
+>> ssh-add ~/.ssh/ec2-EmeryAccount.pem 
 >> anurags-MBP-2:ose-amazon anuragsaran$ git clone https://github.com/rht-labs/openshift-ansible
 >> export AWS_ACCESS_KEY_ID=
 >> export AWS_SECRET_ACCESS_KEY=
