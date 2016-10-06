@@ -72,6 +72,15 @@ Host *.tryopenshift.online
 >> export AWS_SECRET_ACCESS_KEY=
 ```
 
+* Makesure subnet 3rd octet is less than 18.
+* 172.31.0.0/16 
+* 172.31.16.0/20 
+* subnet-3659ac6d
+
+Ensure to configure your route table and internet gateway.
+Please note ALL Traffic value on security group is misleading.
+ssh-add ~/.ssh/ec2-EmeryAccount.pem 
+
 ## Get the subnet and the cider for the subnet from AWS.
 * subnet-3659ac6d
 * 172.31.16.0/20
