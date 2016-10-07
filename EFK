@@ -1,0 +1,43 @@
+oc create -n openshift -f \
+    /usr/share/openshift/examples/infrastructure-templates/enterprise/logging-deployer.yaml
+oadm new-project logging --node-selector=""
+oc project logging
+oc secrets new logging-deployer nothing=/dev/null
+oc create -f - <<API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: logging-deployer
+secrets:
+- name: logging-deployer
+API
+oc policy add-role-to-user edit --serviceaccount logging-deployer
+oadm policy add-scc-to-user  \
+    privileged system:serviceaccount:logging:aggregated-logging-fluentd
+oadm policy add-cluster-role-to-user cluster-reader \
+    system:serviceaccount:logging:aggregated-logging-fluentd
+oc new-app logging-deployer-template \
+             --param KIBANA_HOSTNAME=kibana.apps-1.oscid17.tryopenshift.online \
+             --param ES_CLUSTER_SIZE=1 \
+             --param PUBLIC_MASTER_URL=https://master-1.oscid17.tryopenshift.online:8443
+<BREAK>
+
+oc new-app logging-support-template
+oc import-image logging-auth-proxy:3.2.0 \
+     --from registry.access.redhat.com/openshift3/logging-auth-proxy:3.2.0
+oc import-image logging-kibana:3.2.0 \
+     --from registry.access.redhat.com/openshift3/logging-kibana:3.2.0
+oc import-image logging-elasticsearch:3.2.0 \
+     --from registry.access.redhat.com/openshift3/logging-elasticsearch:3.2.0
+oc import-image logging-fluentd:3.2.0 \
+     --from registry.access.redhat.com/openshift3/logging-fluentd:3.2.0
+
+<BREAK>
+oc new-app logging-es-template
+
+# add following to master-config.yaml
+#loggingPublicURL: "https://kibana.apps-1.oscid17.tryopenshift.online"
+
+oc scale dc/logging-fluentd --replicas=2
+
+restart atomic-openshift-master afrer changing master-config.yaml
