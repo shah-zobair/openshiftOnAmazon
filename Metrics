@@ -1,0 +1,40 @@
+oc project openshift-infra
+
+add this to your master-config.yaml
+metricsPublicURL: https://metrics.apps.ose.tryopenshift.online/hawkular/metrics
+
+
+
+
+#!/bin/bash
+
+metrics_host=metrics.apps-1.oscid17.tryopenshift.online
+echo "Createing Metrics"
+oc project openshift-infra
+oc create -f - <<API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: metrics-deployer
+secrets:
+- name: metrics-deployer
+API
+
+oadm policy add-role-to-user edit \
+system:serviceaccount:openshift-infra:metrics-deployer \
+-n openshift-infra
+
+oadm policy add-cluster-role-to-user cluster-reader \
+system:serviceaccount:openshift-infra:heapster \
+-n openshift-infra
+
+oc secrets new metrics-deployer nothing=/dev/null
+oc process metrics-deployer-template -n openshift -v HAWKULAR_METRICS_HOSTNAME=$metrics_host,USE_PERSISTENT_STORAGE=false | oc create -f -
+
+echo "MAUNUAL SETPS"
+echo "add line to /etc/origin/master-config.yaml"
+echo "assetConfig:"
+echo "metricsPublicURL: https://$metrics_host/hawkular/metrics"
+metricsPublicURL: https://metrics.apps-1.oscid17.tryopenshift.online/hawkular/metrics
+
+systemctl restart atomic-openshift-master.
