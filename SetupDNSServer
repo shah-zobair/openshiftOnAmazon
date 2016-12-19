@@ -1,0 +1,77 @@
+Steps are below:
+DNS server setup for my local VMs (example.com). I am using VirtualBox
+DNS server  10.0.2.4
+OSE master:  10.0.2.10
+OSE node: 10.0.2.5
+OSE client: 10.0.2.6
+
+ 
+1. yum -y install bind*
+2. edit /etc/named.conf
+listen-on port 53 { any; };
+allow-query { any; };
+zone "example.com" IN {
+type master;
+file "example.com.fwd.zone";
+allow-transfer { any; };
+};
+
+ 
+zone "2.0.10.in-addr.arpa" IN {
+type master;
+file "example.com.rev.zone";
+allow-transfer { any; };
+};
+
+ 
+3. cd /var/named
+4. cp -p named.localhost example.com.fwd.zone
+5.cp -p named.loopback example.com.rev.zone
+6. Modify example.com.fwd.zone as shown below.
+$TTL 1D
+@ IN SOA example.com. root.example.com. (
+0 ; serial
+1D ; refresh
+1H ; retry
+1W ; expire
+3H ) ; minimum
+@ NS ose31master.example.com.
+A 127.0.0.1
+ose31master A 10.0.2.4
+*.cloudapps.example.com. 300 A 10.0.2.10
+ose31node1 A 10.0.2.5
+ose31node2 A 10.0.2.10
+
+ 
+note: 10.0.2.4 is the router is going to be on.
+
+ 
+7. Modify example.com.rev.zone as shown below
+$TTL 1D
+@ IN SOA example.com. root.example.com (
+0 ; serial
+1D ; refresh
+1H ; retry
+1W ; expire
+3H ) ; minimum
+@ NS ose31master.example.com.
+A 127.0.0.1
+PTR localhost.
+4 PTR ose31master.
+5 PTR ose31node1.
+10 PTR ose31node2.
+
+ 
+8. Check config file and make sure not error
+named-checkconf /etc/named.conf
+named-checkzone example.com /var/named/example.com.fwd.zone
+named-checkzone 2.0.10.in-addr.arpa /var/named/example.com.rev.zone
+ 
+9. systemctl enable named
+10. systemctl start named
+11. edit resolv.conf on all host
+search example.com
+domain example.com
+nameserver 10.0.2.4
+12. to prevent the resolv.conf file get updated is to set PEERDNS=no in the ifcfg-<interface> file.
+13. to test it do: nslookup or dig <fqdn>
