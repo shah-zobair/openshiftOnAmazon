@@ -44,8 +44,9 @@ nameserver 172.19.23.4
 Skipped LB and bastion server only for 3 below commands.
 # yum install docker-1.10.3 -y
 Edit the /etc/sysconfig/docker file 
+Limit docker logs.
 OPTIONS='--selinux-enabled --insecure-registry 172.30.0.0/16'
-Use : sed -i '/OPTIONS=.*/c\OPTIONS="--selinux-enabled --insecure-registry 172.30.0.0/16"' \
+Use : sed -i '/OPTIONS=.*/c\OPTIONS="--selinux-enabled --insecure-registry 172.30.0.0/16  --log-opt max-size=1M --log-opt max-file=3"' \
 /etc/sysconfig/docker
 
 # Modify these options if you want to change the way the docker daemon runs
@@ -85,6 +86,61 @@ echo "209.132.182.63 registry.access.redhat.com" >> /etc/hosts
 Volume Group : https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/Logical_Volume_Manager_Administration/LVM_definition.html
 The underlying physical storage unit of an LVM logical volume is a block device such as a partition or whole disk. This device is initialized as an LVM physical volume (PV).
 To create an LVM logical volume, the physical volumes are combined into a volume group (VG). This creates a pool of disk space out of which LVM logical volumes (LVs) can be allocated.
+
+Create a mount point for NFS server for registry , metrics and logging.
+Create a volume of 90 GB on openstack and attach it to bastion server.
+fdisk -l <-- List the volumes.
+fdisk /dev/vdb  -->use options -->n p w
+mkfs.xfs /dev/vdb1 -f
+blkid
+get the UID and add it to /etc/fstab
+UUID=0869ca42-d5d9-4cdb-b66d-9f13d5c27cca /exports          xfs     defaults        0 0
+mkdir /exports
+partprobe
+mkfs.xfs /dev/vdb1
+mount /exports
+ df -h
+ 
+ Now create volumes 1 per node and attach it to respective nodes.
+cat <<EOF > /etc/sysconfig/docker-storage-setup
+DEVS=/dev/vdc
+VG=docker-vg
+EOF
+
+docker-storage-setup 
+
+Verify your configuration. You should have a dm.thinpooldev value in the /etc/sysconfig/docker-storage file and a docker-pool logical volume:
+# cat /etc/sysconfig/docker-storage
+
+lvs
+**** Check if docker restarts work.
+systemctl stop docker
+If there is any existing docker installed on the node previously, You want to remove it.
+rm -rf /var/lib/docker/*
+systemctl restart docker
+systemctl status docker -l
+reboot --> Should be done after yum updates.
+****
+Run on baastion the: 
+ssh-keygen
+for host in asaran-clust-02-master1.osop.rhcloud.com \
+    asaran-clust-02-lb.osop.rhcloud.com \
+    asaran-clust-02-node1.osop.rhcloud.com \
+    asaran-clust-02-infra1.osop.rhcloud.com; \
+    do ssh-copy-id -i ~/.ssh/id_rsa.pub $host; \
+    done
+
+Sample Ansible inventry file:
+https://github.com/openshift/openshift-ansible/blob/master/inventory/byo/hosts.ose.example
+
+echo "Running Asible"
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
+* SSH failed.  Had t copy the pub file to authorized_keys manually on each node.
+echo "making master node schedulable"
+oadm manage-node $MASTERFQDN --schedulable=true
+
+TASK [Warn user about bad openshift_hostname values] ***************************
+skipping: [asaran-clust-02-master1.osop.rhcloud.com]
 
 
 
