@@ -139,8 +139,19 @@ ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
 echo "making master node schedulable"
 oadm manage-node $MASTERFQDN --schedulable=true
 
-TASK [Warn user about bad openshift_hostname values] ***************************
-skipping: [asaran-clust-02-master1.osop.rhcloud.com]
+
+
+
+***********
+If you have a dns, you can give names to the hosts as an example
+master.example.com
+node1.example.com
+node2.example.com
+
+and point each one to their public ips from the dns server
+
+Otherwise, just use private ip addresses as the node names. Don’t use openstack assigned node names as they don’t resolve across nodes. It does not work on OS1.
+
 
 
 
