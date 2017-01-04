@@ -139,8 +139,19 @@ ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
 echo "making master node schedulable"
 oadm manage-node $MASTERFQDN --schedulable=true
 
+https://lb.nlytic.com:8443/login
+Adding a local admin user to allow a user to login:
+admin/admin and anuragadmin/Pass@123
+oc login -u system:admin --config=/etc/origin/master/admin.kubeconfig
 
-
+[root@asaran-clust-02-master1 ~]# vi /etc/origin/master/master-config.yaml 
+[root@asaran-clust-02-master1 ~]# cat /etc/origin/master/htpasswd
+[root@asaran-clust-02-master1 ~]# htpasswd /etc/origin/master/htpasswd admin
+New password: 
+Re-type new password: 
+Adding password for user admin
+oadm policy add-cluster-role-to-user cluster-admin (youruser)
+for project level access: oadm policy add-role-to-user <role> <username> (in the current project)
 
 ***********
 If you have a dns, you can give names to the hosts as an example
