@@ -1,0 +1,32 @@
+Install CLI.
+$ curl "https://s3.amazonaws.com/aws-cli/awscli-bundle.zip" -o "awsclibundle.
+zip"
+$ unzip awscli-bundle.zip
+$ sudo ./awscli-bundle/install -i /usr/local/aws -b /usr/local/bin/aws
+
+anurags-MacBook-Pro-2:os_cert anuragsaran$ aws configure
+AWS Access Key ID [None]: 
+AWS Secret Access Key [None]: 
+Default region name [None]: US-EAST-1
+Default output format [None]: 
+
+Install Gradle
+$ curl -s https://get.sdkman.io | bash
+New Window.
+$ source "/Users/anuragsaran/.sdkman/bin/sdkman-init.sh"
+$ sdk install gradle 2.14
+
+$ mkdir -p ~ /serverless
+$ cd ~/serverless
+$ touch build.gradle
+Please
+write this block into build.gradle file.
+task wrapper(type: Wrapper) { gradleVersion = '2.14' }
+$ gradle wrapper
+
+
+
+
+
+
+
