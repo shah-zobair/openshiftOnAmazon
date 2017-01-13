@@ -1,0 +1,242 @@
+3 Masters
+2 Infra
+4 Nodes
+1 LB
+1 Bastion and NFS.
+
+SSH into all boxes: ssh -i ~/.ssh/asaran-openstack.pem cloud-user@ipaddreess
+sudo -i
+bash
+echo "209.132.183.44 xmlrpc.rhn.redhat.com" >> /etc/hosts
+echo "23.204.148.218 content-xmlrpc.rhn.redhat.com" >> /etc/hosts
+echo "209.132.183.49 subscription.rhn.redhat.com" >> /etc/hosts
+echo "209.132.182.33 repository.jboss.org" >> /etc/hosts
+echo "209.132.182.63 registry.access.redhat.com" >> /etc/hosts
+No need to add--> echo "nameserver 8.8.8.8" >> /etc/resolv.conf  due to above commands.
+
+Ensure:
+cat /etc/selinux/config 
+SELINUX=enforcing
+
+subscription-manager register --username=asaran@redhat.com --password=Dell1984$
+subscription-manager list --available --matches '*OpenShift*'
+subscription-manager attach --pool=8a85f9874011071c01407da00b997cb2
+subscription-manager repos --disable="*"
+ subscription-manager repos \
+    --enable="rhel-7-server-rpms" \
+    --enable="rhel-7-server-extras-rpms" \
+    --enable="rhel-7-server-ose-3.3-rpms"
+yum install wget git net-tools bind-utils iptables-services bridge-utils bash-completion -y
+yum install atomic-openshift-utils -y
+yum update -y
+
+yum install docker-1.10.3 -y
+sed -i '/OPTIONS=.*/c\OPTIONS="--selinux-enabled --insecure-registry 172.30.0.0/16  --log-opt max-size=1M --log-opt max-file=3"' \
+/etc/sysconfig/docker
+
+On The NFS server. In our case its the Bastion.
+Create a Volume of 200 GB.
+Attached to asaran-clust1-bastion on /dev/vdc
+Create a mount point for NFS server for registry , metrics and logging.
+Create a volume of 90 GB on openstack and attach it to bastion server.
+fdisk -l <-- List the volumes.
+[root@asaran-clust1-bastion ~]# fdisk -l 
+
+Disk /dev/vda: 19.3 GB, 19327352832 bytes, 37748736 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x0000b3fd
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vda1   *        2048    37747258    18872605+  83  Linux
+
+Disk /dev/vdb: 42.9 GB, 42949672960 bytes, 83886080 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/vdc: 214.7 GB, 214748364800 bytes, 419430400 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+fdisk /dev/vdb  -->use options -->n p w
+[root@asaran-clust1-bastion ~]# fdisk /dev/vdc
+Welcome to fdisk (util-linux 2.23.2).
+
+Changes will remain in memory only, until you decide to write them.
+Be careful before using the write command.
+
+Device does not contain a recognized partition table
+Building a new DOS disklabel with disk identifier 0x3f3f1cdb.
+
+Command (m for help): m
+Command action
+   a   toggle a bootable flag
+   b   edit bsd disklabel
+   c   toggle the dos compatibility flag
+   d   delete a partition
+   g   create a new empty GPT partition table
+   G   create an IRIX (SGI) partition table
+   l   list known partition types
+   m   print this menu
+   n   add a new partition
+   o   create a new empty DOS partition table
+   p   print the partition table
+   q   quit without saving changes
+   s   create a new empty Sun disklabel
+   t   change a partition's system id
+   u   change display/entry units
+   v   verify the partition table
+   w   write table to disk and exit
+   x   extra functionality (experts only)
+
+Command (m for help): n
+Partition type:
+   p   primary (0 primary, 0 extended, 4 free)
+   e   extended
+Select (default p): p
+Partition number (1-4, default 1): 
+First sector (2048-419430399, default 2048): 
+Using default value 2048
+Last sector, +sectors or +size{K,M,G} (2048-419430399, default 419430399): 
+Using default value 419430399
+Partition 1 of type Linux and of size 200 GiB is set
+
+Command (m for help): w
+The partition table has been altered!
+
+Calling ioctl() to re-read partition table.
+Syncing disks.
+[root@asaran-clust1-bastion ~]# 
+
+
+mkfs.xfs /dev/vdc1 -f
+[root@asaran-clust1-bastion ~]# mkfs.xfs /dev/vdc1 -f
+meta-data=/dev/vdc1              isize=512    agcount=4, agsize=13107136 blks
+         =                       sectsz=512   attr=2, projid32bit=1
+         =                       crc=1        finobt=0, sparse=0
+data     =                       bsize=4096   blocks=52428544, imaxpct=25
+         =                       sunit=0      swidth=0 blks
+naming   =version 2              bsize=4096   ascii-ci=0 ftype=1
+log      =internal log           bsize=4096   blocks=25599, version=2
+         =                       sectsz=512   sunit=0 blks, lazy-count=1
+realtime =none                   extsz=4096   blocks=0, rtextents=0
+
+blkid
+[root@asaran-clust1-bastion ~]# blkid
+/dev/vdb: LABEL="ephemeral0" UUID="65b59612-e3aa-4dfb-80f2-a489f8043fbb" TYPE="ext3" 
+/dev/vda1: UUID="f71ce667-c7c0-4c25-86c1-a1c0dee0dea8" TYPE="xfs" 
+/dev/vdc1: UUID="c60fe568-e109-4c4b-8ee7-a6df171f4734" TYPE="xfs" 
+
+get the UID and add it to /etc/fstab
+UUID=0869ca42-d5d9-4cdb-b66d-9f13d5c27cca /exports          xfs     defaults        0 0
+
+mkdir /exports
+partprobe is a program that informs the operating system kernel of partition table changes.
+partprobe
+mount /exports
+ df -h
+ 
+ On ALl Servers except for Load balancer and NFS-Bastion.
+ [cloud-user@asaran-clust1-node4 ~]$ sudo -i
+[root@asaran-clust1-node4 ~]# fdisk -l 
+
+Disk /dev/vda: 19.3 GB, 19327352832 bytes, 37748736 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk label type: dos
+Disk identifier: 0x0000b3fd
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/vda1   *        2048    37747258    18872605+  83  Linux
+
+Disk /dev/vdb: 42.9 GB, 42949672960 bytes, 83886080 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/vdc: 26.8 GB, 26843545600 bytes, 52428800 sectors
+Units = sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+Now create volumes 1 per node and attach it to respective nodes.
+[root@asaran-clust1-node4 ~]# cat <<EOF > /etc/sysconfig/docker-storage-setup
+> DEVS=/dev/vdc
+> VG=docker-vg
+> EOF
+[root@asaran-clust1-node4 ~]# docker-storage-setup
+INFO: Volume group backing root filesystem could not be determined
+Checking that no-one is using this disk right now ...
+OK
+
+Disk /dev/vdc: 52012 cylinders, 16 heads, 63 sectors/track
+sfdisk:  /dev/vdc: unrecognized partition table type
+
+Old situation:
+sfdisk: No partitions found
+
+New situation:
+Units: sectors of 512 bytes, counting from 0
+
+   Device Boot    Start       End   #sectors  Id  System
+/dev/vdc1          2048  52428799   52426752  8e  Linux LVM
+/dev/vdc2             0         -          0   0  Empty
+/dev/vdc3             0         -          0   0  Empty
+/dev/vdc4             0         -          0   0  Empty
+Warning: partition 1 does not start at a cylinder boundary
+Warning: partition 1 does not end at a cylinder boundary
+Warning: no primary partition is marked bootable (active)
+This does not matter for LILO, but the DOS MBR will not boot this disk.
+Successfully wrote the new partition table
+
+Re-reading the partition table ...
+
+If you created or changed a DOS partition, /dev/foo7, say, then use dd(1)
+to zero the first 512 bytes:  dd if=/dev/zero of=/dev/foo7 bs=512 count=1
+(See fdisk(8).)
+INFO: Device node /dev/vdc1 exists.
+  Physical volume "/dev/vdc1" successfully created.
+  Volume group "docker-vg" successfully created
+  Using default stripesize 64.00 KiB.
+  Rounding up size to full physical extent 28.00 MiB
+  Logical volume "docker-pool" created.
+  Logical volume docker-vg/docker-pool changed.
+[root@asaran-clust1-node4 ~]# 
+
+
+Verify your configuration. You should have a dm.thinpooldev value in the /etc/sysconfig/docker-storage file and a docker-pool logical volume:
+[root@asaran-clust1-node4 ~]# cat /etc/sysconfig/docker-storage
+DOCKER_STORAGE_OPTIONS="--storage-driver devicemapper --storage-opt dm.fs=xfs --storage-opt dm.thinpooldev=/dev/mapper/docker--vg-docker--pool --storage-opt dm.use_deferred_removal=true "
+
+[root@asaran-clust1-master3 ~]# systemctl stop docker
+[root@asaran-clust1-master3 ~]# systemctl start docker
+[root@asaran-clust1-master3 ~]# reboot
+
+Setting the SSH Passwordless login.
+sudo -i
+cd ~/.ssh/
+ssh-keygen
+cat id_rsa.pub 
+vi ~/.ssh/authorized_keys
+
+Update the Host file.
+
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/adhoc/uninstall.yml
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
+
+https://lb.anuragsdemo.com:8443/
+Do this on all masters as we are using a local file to store username/passwords.
+[root@asaran-clust1-master3 ~]# htpasswd /etc/origin/master/htpasswd anuragadmin
+Redhat2017$
+
+
+
+
+
