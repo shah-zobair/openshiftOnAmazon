@@ -2,8 +2,6 @@
 [OSEv3:children]
 masters
 nodes
-etcd
-lb
 nfs
 
 [OSEv3:vars]
@@ -13,7 +11,7 @@ debug_level=2
 
 deployment_type=openshift-enterprise
 
-openshift_release=v3.3.1
+# openshift_release=v3.3.1
 
 openshift_install_examples=true
 
@@ -27,9 +25,11 @@ openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 
 osm_use_cockpit=true
 osm_cockpit_plugins=['cockpit-kubernetes']
 
-openshift_master_cluster_method=native
-openshift_master_cluster_hostname=asaran-clust-02-lb.osop.rhcloud.com
-openshift_master_cluster_public_hostname=lb.nlytic.com
+openshift_master_default_subdomain=apps.nlytic.com
+osm_default_node_selector="region=primary"
+#openshift_master_cluster_method=native
+#openshift_master_cluster_hostname=172.19.23.3
+#openshift_master_cluster_public_hostname=lb.nlytic.com
 
 openshift_hosted_router_selector='region=infra'
 #openshift_hosted_router_replicas=2
@@ -105,7 +105,7 @@ openshift_hosted_logging_hostname=logging.apps.nlytic.com
 # Disable the OpenShift SDN plugin
 # openshift_use_openshift_sdn=False
 # Configure dnsIP in the node config
-#openshift_dns_ip=172.30.0.1
+#openshift_dns_ip=172.19.23.30
 
 #openshift_use_dnsmasq=False
 #openshift_node_dnsmasq_additional_config_file=/home/bob/ose-dnsmasq.conf
@@ -115,21 +115,21 @@ openshift_hosted_logging_hostname=logging.apps.nlytic.com
 
 # host group for masters
 [masters]
-asaran-clust-02-master1.osop.rhcloud.com
+172.19.23.3
 
 [nfs]
-asaran-clust-02-bastion.osop.rhcloud.com
+172.19.23.25
 
-[etcd]
-asaran-clust-02-master1.osop.rhcloud.com
+# [etcd]
+# 172.19.23.26
 
 # NOTE: Containerized load balancer hosts are not yet supported, if using a global
 # containerized=true host variable we must set to false.
-[lb]
-asaran-clust-02-lb.osop.rhcloud.com containerized=false
+# [lb]
+# 172.19.23.24 containerized=false
 
 [nodes]
-asaran-clust-02-master1.osop.rhcloud.com
-asaran-clust-02-infra1.osop.rhcloud.com openshift_node_labels="{'region': 'infra', 'zone': 'usa'}"
-asaran-clust-02-node1.osop.rhcloud.com  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}"
+172.19.23.3 openshift_node_labels="{'region': 'master', 'zone': 'usa'}" openshift_hostname=172.19.23.3 openshift_public_hostname=master1.nlytic.com openshift_scheduleable=false
+172.19.23.5 openshift_node_labels="{'region': 'infra', 'zone': 'usa'}"  openshift_hostname=172.19.23.5
+172.19.23.26  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}" openshift_hostname=172.19.23.26
 
