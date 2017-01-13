@@ -18,7 +18,7 @@ Ensure:
 cat /etc/selinux/config 
 SELINUX=enforcing
 
-subscription-manager register --username=asaran@redhat.com --password=Dell1984$
+subscription-manager register --username=asaran@redhat.com --password=D****$
 subscription-manager list --available --matches '*OpenShift*'
 subscription-manager attach --pool=8a85f9874011071c01407da00b997cb2
 subscription-manager repos --disable="*"
@@ -235,6 +235,64 @@ https://lb.anuragsdemo.com:8443/
 Do this on all masters as we are using a local file to store username/passwords.
 [root@asaran-clust1-master3 ~]# htpasswd /etc/origin/master/htpasswd anuragadmin
 Redhat2017$
+
+Node Labels:
+ oc get nodes --show-labels
+ 
+
+Configure default Namespace
+    On any of the master hosts, edit the default namespace to set`openshift.io/node-selector` to env=infra:
+
+    []# oc annotate namespace default openshift.io/node-selector='region=infra' --overwrite
+
+    Check that the default namespace updates with your changes:
+
+    []# oc get namespace default -o yaml | grep infra
+        openshift.io/node-selector: region=infra
+
+Test the registry for connectivity:
+
+ []# echo `oc get service docker-registry --template '{{.spec.portalIP}}:{{index .spec.ports 0 "port"}}/healthz'`
+ 172.30.42.118:5000/healthz
+ []# curl -v `oc get service docker-registry --template '{{.spec.portalIP}}:{{index .spec.ports 0 "port"}}/healthz'`
+
+oc scale dc/docker-registry --replicas=2
+Because there are known issues with NFS file attribute synchronization, you need to modify the registry service’s load-balancing behavior:
+
+[]# oc get -o yaml svc docker-registry | \
+      sed 's/(sessionAffinity:s**).*/1ClientIP/' | \
+      oc replace -f -
+oc scale dc/docker-registry --replicas=1
+oc get pod -o wide
+
+[root@asaran-clust1-master3 ~]# oc annotate namespace openshift-infra openshift.io/node-selector='region=infra' --overwrite
+
+
+
+
+Logging:
+
+oc delete namespace logging
+oadm new-project logging --node-selector=""
+??oadm new-project logging --node-selector region=primary
+oc project logging
+oc new-app logging-deployer-account-template
+oadm policy add-cluster-role-to-user oauth-editor        system:serviceaccount:logging:logging-deployer
+oadm policy add-scc-to-user privileged      system:serviceaccount:logging:aggregated-logging-fluentd 
+oadm policy add-cluster-role-to-user cluster-reader     system:serviceaccount:logging:aggregated-logging-fluentd
+oc create configmap logging-deployer    --from-literal kibana-hostname=kibana.apps.anuragsdemo.com    --from-literal public-master-url=https://lb.anuragsdemo.com:8443    --from-literal es-cluster-size=3    --from-literal es-instance-ram=8G
+oc edit configmap logging-deployer
+oc create secret generic logging-deployer
+oc new-app logging-deployer-template
+oc get pods
+Once you have ElasticSearch running as desired, label the nodes intended for Fluentd deployment to feed their logs into ES. The example below would label a node named node.example.com using the default Fluentd node selector:
+$ oc label node/node.example.com logging-infra-fluentd=true
+oc label node --all logging-infra-fluentd=true
+
+You can scale the Kibana deployment as usual for redundancy:
+oc scale dc/logging-kibana --replicas=2
+
+??Assing storage to elastic search.
 
 
 
