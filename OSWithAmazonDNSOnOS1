@@ -98,8 +98,19 @@ UUID=0869ca42-d5d9-4cdb-b66d-9f13d5c27cca /exports          xfs     defaults    
 mkdir /exports
 partprobe
 mount /exports
- df -h
- 
+df -h
+
+#
+# /etc/fstab
+# Created by anaconda on Thu Mar  3 11:22:22 2016
+#
+# Accessible filesystems, by reference, are maintained under '/dev/disk'
+# See man pages fstab(5), findfs(8), mount(8) and/or blkid(8) for more info
+#
+UUID=f71ce667-c7c0-4c25-86c1-a1c0dee0dea8 /                       xfs     defaults        0 0
+UUID=0793f1f9-0371-4809-a870-7c6b139fc40f /exports                xfs     defaults        0 0
+
+
  Now create volumes 1 per node and attach it to respective nodes.
 cat <<EOF > /etc/sysconfig/docker-storage-setup
 DEVS=/dev/vdc
@@ -163,7 +174,19 @@ and point each one to their public ips from the dns server
 Otherwise, just use private ip addresses as the node names. Don’t use openstack assigned node names as they don’t resolve across nodes. It does not work on OS1.
 
 
-
+Logging:
+oc delete namespace logging
+oadm new-project logging --node-selector=""
+oc project logging
+oc new-app logging-deployer-account-template
+oadm policy add-cluster-role-to-user oauth-editor        system:serviceaccount:logging:logging-deployer
+oadm policy add-scc-to-user privileged      system:serviceaccount:logging:aggregated-logging-fluentd 
+oadm policy add-cluster-role-to-user cluster-reader     system:serviceaccount:logging:aggregated-logging-fluentd
+oc create configmap logging-deployer    --from-literal kibana-hostname=kibana.apps.nlytic.com    --from-literal public-master-url=https://master1.nlytic.com:8443    --from-literal es-cluster-size=1    --from-literal es-instance-ram=8G
+oc edit configmap logging-deployer
+oc create secret generic logging-deployer
+oc new-app logging-deployer-template
+oc label node --all logging-infra-fluentd=true
 
 
 
