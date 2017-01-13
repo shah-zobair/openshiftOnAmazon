@@ -97,7 +97,6 @@ get the UID and add it to /etc/fstab
 UUID=0869ca42-d5d9-4cdb-b66d-9f13d5c27cca /exports          xfs     defaults        0 0
 mkdir /exports
 partprobe
-mkfs.xfs /dev/vdb1
 mount /exports
  df -h
  
