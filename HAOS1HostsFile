@@ -1,0 +1,144 @@
+# Create an OSEv3 group that contains the masters and nodes groups
+[OSEv3:children]
+masters
+nodes
+lb
+nfs
+
+[OSEv3:vars]
+ansible_ssh_user=root
+
+debug_level=2
+
+deployment_type=openshift-enterprise
+
+# openshift_release=v3.3.1
+
+openshift_install_examples=true
+
+# docker_version="1.10.3"
+# docker_upgrade=False
+
+# htpasswd
+openshift_master_identity_providers=[{'name': 'htpasswd_auth', 'login': 'true', 'challenge': 'true', 'kind': 'HTPasswdPasswordIdentityProvider', 'filename': '/etc/origin/master/htpasswd'}]
+
+# Enable cockpit
+osm_use_cockpit=true
+osm_cockpit_plugins=['cockpit-kubernetes']
+
+openshift_master_default_subdomain=apps.anuragsdemo.com
+osm_default_node_selector="region=primary"
+#openshift_master_cluster_method=native
+#openshift_master_cluster_hostname=
+#openshift_master_cluster_public_hostname=lb.anuragsdemo.com
+
+openshift_hosted_router_selector='region=infra'
+#openshift_hosted_router_replicas=2
+
+# Openshift Registry Options
+openshift_hosted_registry_selector='region=infra'
+#
+# Disable management of the OpenShift Registry
+#openshift_hosted_manage_registry=false
+
+# Registry Storage Options
+# An NFS volume will be created with path "nfs_directory/volume_name"
+# on the host within the [nfs] host group.  For example, the volume
+# path using these options would be "/exports/registry"
+openshift_hosted_registry_storage_kind=nfs
+openshift_hosted_registry_storage_access_modes=['ReadWriteMany']
+openshift_hosted_registry_storage_nfs_directory=/exports
+openshift_hosted_registry_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_registry_storage_volume_name=registry
+openshift_hosted_registry_storage_volume_size=70Gi
+
+# Metrics deployment
+# See: https://docs.openshift.com/enterprise/latest/install_config/cluster_metrics.html
+# By default metrics are not automatically deployed, set this to enable them
+openshift_hosted_metrics_deploy=true
+#
+# Storage Options
+# Option A - NFS Host Group
+# An NFS volume will be created with path "nfs_directory/volume_name"
+# on the host within the [nfs] host group.  For example, the volume
+# path using these options would be "/exports/metrics"
+openshift_hosted_metrics_storage_kind=nfs
+openshift_hosted_metrics_storage_access_modes=['ReadWriteOnce']
+openshift_hosted_metrics_storage_nfs_directory=/exports
+openshift_hosted_metrics_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_metrics_storage_volume_name=metrics
+openshift_hosted_metrics_storage_volume_size=50Gi
+#
+openshift_hosted_metrics_public_url=https://hawkular-metrics.apps.nlytic.com/hawkular/metrics
+
+# Logging deployment
+#
+# Currently logging deployment is disabled by default, enable it by setting this
+#openshift_hosted_logging_deploy=true
+#
+# Logging storage config
+# Option A - NFS Host Group
+# An NFS volume will be created with path "nfs_directory/volume_name"
+# on the host within the [nfs] host group.  For example, the volume
+# path using these options would be "/exports/logging"
+openshift_hosted_logging_storage_kind=nfs
+openshift_hosted_logging_storage_access_modes=['ReadWriteOnce']
+openshift_hosted_logging_storage_nfs_directory=/exports
+openshift_hosted_logging_storage_nfs_options='*(rw,root_squash)'
+openshift_hosted_logging_storage_volume_name=logging
+openshift_hosted_logging_storage_volume_size=60Gi
+#
+#
+# Configure loggingPublicURL in the master config for aggregate logging, defaults
+# to https://kibana.{{ openshift_master_default_subdomain }}
+openshift_master_logging_public_url=https://kibana.apps.anuragsdemo.com
+# Configure the number of elastic search nodes, unless you're using dynamic provisioning
+# this value must be 1
+openshift_hosted_logging_elasticsearch_cluster_size=1
+openshift_hosted_logging_hostname=logging.apps.anuragsdemo.com
+# Configure the prefix and version for the deployer image
+#openshift_hosted_logging_deployer_prefix=registry.example.com:8888/openshift3/
+#openshift_hosted_logging_deployer_version=3.3.0
+
+# Configure the multi-tenant SDN plugin (default is 'redhat/openshift-ovs-subnet')
+# os_sdn_network_plugin_name='redhat/openshift-ovs-multitenant'
+
+# Disable the OpenShift SDN plugin
+# openshift_use_openshift_sdn=False
+# Configure dnsIP in the node config
+#openshift_dns_ip=172.19.23.30
+
+#openshift_use_dnsmasq=False
+#openshift_node_dnsmasq_additional_config_file=/home/bob/ose-dnsmasq.conf
+
+# Enable API service auditing, available as of 3.2
+#openshift_master_audit_config={"basicAuditEnabled": true}
+
+# host group for masters
+[masters]
+172.19.23.11
+172.19.23.13
+172.19.23.14
+
+[nfs]
+172.19.23.9
+
+# [etcd]
+# 172.19.23.26
+
+# NOTE: Containerized load balancer hosts are not yet supported, if using a global
+# containerized=true host variable we must set to false.
+[lb]
+172.19.23.7 containerized=false
+
+[nodes]
+172.19.23.11 openshift_node_labels="{'region': 'master', 'zone': 'usa'}" openshift_hostname=172.19.23.11 openshift_public_hostname=master1.anuragsdemo.com openshift_scheduleable=false
+172.19.23.13 openshift_node_labels="{'region': 'master', 'zone': 'usa'}" openshift_hostname=172.19.23.13 openshift_public_hostname=master2.anuragsdemo.com openshift_scheduleable=false
+172.19.23.14 openshift_node_labels="{'region': 'master', 'zone': 'usa'}" openshift_hostname=172.19.23.14 openshift_public_hostname=master3.anuragsdemo.com openshift_scheduleable=false
+172.19.23.16 openshift_node_labels="{'region': 'infra', 'zone': 'usa'}"  openshift_hostname=172.19.23.16
+172.19.23.20 openshift_node_labels="{'region': 'infra', 'zone': 'usa'}"  openshift_hostname=172.19.23.20
+172.19.23.22  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}" openshift_hostname=172.19.23.22
+172.19.23.23  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}" openshift_hostname=172.19.23.23
+172.19.23.27  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}" openshift_hostname=172.19.23.27
+172.19.23.28  openshift_node_labels="{'region': 'primary', 'zone': 'usa'}" openshift_hostname=172.19.23.28
+
