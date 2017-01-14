@@ -1,0 +1,55 @@
+
+https://docs.openshift.com/container-platform/3.3/install_config/persistent_storage/persistent_storage_nfs.html#overview
+
+mkdir /osdata
+fdisk -l 
+fdisk /dev/vdd
+mkfs.xfs /dev/vdd1
+blkid
+vi /etc/fstab 
+partprobe
+mount /osdata
+df -h
+
+Provisioning
+PV Object Definition Using NFS
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv00011
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+  - ReadWriteOnce
+  nfs:
+    path: /osdata
+    server: 172.19.23.32
+  persistentVolumeReclaimPolicy: Recycle
+  
+[root@asaran-clust1-master3 ~]# oc create -f nfs-pv.yaml
+persistentvolume "pv00011" created
+
+[root@asaran-clust1-master3 ~]# oc get pv
+NAME              CAPACITY   ACCESSMODES   STATUS      CLAIM                                 REASON    AGE
+logging-volume    60Gi       RWO           Available                                                   8h
+metrics-volume    50Gi       RWO           Bound       openshift-infra/metrics-cassandra-1             8h
+pv00011           100Gi      RWO           Available                                                   24s
+registry-volume   70Gi       RWX           Bound       default/registry-claim                          8h
+[root@asaran-clust1-master3 ~]# 
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-claim1
+spec:
+  accessModes:
+    - ReadWriteOnce 
+  resources:
+    requests:
+      storage: 1Gi 
+
+oc create -f nfs-claim.yaml
+
+
