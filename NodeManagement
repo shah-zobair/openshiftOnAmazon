@@ -1,0 +1,57 @@
+oc label node/172.19.23.22 env=dev
+oc label node/172.19.23.23 env=dev
+oc label node/172.19.23.27 env=prod
+oc label node/172.19.23.28 env=prod
+oadm new-project projecta --display-name="Project A Description" --node-selector='env=dev'
+oadm new-project projectb --display-name="Project B Description" --node-selector='env=dev'
+oadm new-project projectc --display-name="Project C Description" --node-selector='env=dev'
+oc new-app https://github.com/openshift/cakephp-ex.git -n projecta
+oc new-app openshift/hello-openshift:v1.0.6 -n projectb
+oc new-app https://github.com/openshift/simple-openshift-sinatra-sti.git -n projectc
+oc get pods --all-namespaces -o wide
+ oc scale deploymentconfigs/cakephp-ex -n projecta --replicas=5
+ oc scale deploymentconfigs/hello-openshift -n projectb --replicas=5
+ oc scale deploymentconfigs/simple-openshift-sinatra-sti  -n projectc --replicas=5
+oc get pods --all-namespaces -o wide
+
+oadm manage-node 172.19.23.22 --list-pods
+oadm manage-node 172.19.23.23 --list-pods
+View multiple nodes, rather than one node at a time:
+oadm manage-node 172.19.23.11 172.19.23.22 --list-pods
+oadm manage-node 172.19.23.11 172.19.23.23 --list-pods --pod-selector="deploymentconfig=cakephp-ex"
+Use the wide output option of oc get pod to see which nodes pods are running on:
+oc get pod -o wide
+
+Mark node2 as schedulable=false to prevent it from taking any new pods:
+oadm manage-node 172.19.23.22 --schedulable=false  --> Old pods continue to run.
+oadm manage-node 172.19.23.22 \
+    --evacuate --pod-selector="deploymentconfig=hello-openshift" --dry-run
+oadm manage-node 172.19.23.22 --evacuate --force
+
+Remove Node From Cluster
+oc delete node node2.example.com
+Uninstall the node
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/adhoc/uninstall.yml -l node2.example.com
+
+Add A node
+Add new node entry on host file.
+ ansible-playbook -l masters:node3.example.com /usr/share/ansible/openshift-ansible/playbooks/byo/config.yml
+scale up
+ansible-playbook /usr/share/ansible/openshift-ansible/playbooks/byo/openshift-node/scaleup.yml
+
+Prune Deployments/Builds and Images.
+
+[root@asaran-clust1-master2 ~]# oadm prune deployments --orphans
+Dry run enabled - no modifications will be made. Add --confirm to remove deployments
+[root@asaran-clust1-master2 ~]# oadm prune deployments --orphans --keep-complete=2 --keep-failed=1 --keep-younger-than=60m
+Dry run enabled - no modifications will be made. Add --confirm to remove deployments
+[root@asaran-clust1-master2 ~]# oadm prune deployments --orphans --confirm
+[root@asaran-clust1-master2 ~]# 
+[root@asaran-clust1-master2 ~]# oadm prune builds --orphans --keep-complete=5 --keep-failed=1 \
+>     --keep-younger-than=60m
+Dry run enabled - no modifications will be made. Add --confirm to remove builds
+[root@asaran-clust1-master2 ~]# oadm prune builds --orphans --keep-complete=5 --keep-failed=1 \
+>     --keep-younger-than=60m --confirm
+[root@asaran-clust1-master2 ~]# oadm policy add-cluster-role-to-user system:image-pruner anuragadmin
+[root@asaran-clust1-master2 ~]# oadm prune images --keep-tag-revisions=1 --keep-younger-than=60m
+error: you must use a client config with a token
