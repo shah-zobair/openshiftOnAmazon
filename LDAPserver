@@ -1,0 +1,29 @@
+IPA server provides Kerberos,Dogtag, Bind and LDAP? and SSSD.
+Kerveros does need DNS. 
+You need a dedicated server. 
+[root@asaran-clust1-ipa ~]# cat /etc/redhat-release 
+Red Hat Enterprise Linux Server release 7.2 (Maipo)
+# disable SE Linux to make life easier.
+[root@asaran-clust1-ipa ~]# vi /etc/sysconfig/selinux 
+SELINUX=permissive
+
+Add hostname to IP
+[root@asaran-clust1-ipa ~]# vi /etc/hosts
+[root@asaran-clust1-ipa ~]# yum install ipa-server bind-dyndb-ldab ipa-server-dns
+ipa-server-install --setup-dns
+asaran-clust1-ipa.osop.rhcloud.com
+Directory Manager password:
+IPA admin password:
+pass@123
+DNS Forwarders : 8.8.8.8
+
+reversezone :Yes 
+kinit admin
+ipa user-add
+ls --> see ceets created.
+cd /etc/ipa --> these certs used for uswr auth. These certs are wrong and need to fix it.
+klist
+cat /etc/resolve.conf
+http://localhost --> login to freeIPA.
+
+
