@@ -1,0 +1,91 @@
+os-users-grp: Users with access to OpenShift Enterprise
+app-a-grp:App project developers
+app-a-user1
+app-a-user2
+app-b-grp:App project developers
+app-b-user1
+app-b-user2
+os-prod-grp: Administrators and operations team with access to modify production projects
+app-a-app-b-admin1:
+os-platform-grp: Users with full cluster administration control
+os-plat-admin1
+os-plat-admin2
+
+Group access to Projects.
+App-A-grp --> app-a-dev-proj, app-a-test-proj
+App-A-grp --> app-b-dev-proj, app-b-test-proj
+os-prod-grp --> app-a-prod-proj, app-b-prod-proj
+All User Passwords Are: pass@123
+
+# Create Users
+htpasswd /etc/origin/master/htpasswd app-a-user1
+pass@123
+appabadmin2017
+platadmin2017
+
+# Add a group with no users
+  oadm groups new app-a-grp
+  oadm groups new app-b-grp
+  oadm groups new os-prod-grp
+  oadm groups new os-platform-grp
+  oadm groups new os-users-grp
+  
+ # Add a group with two users
+  oadm groups add-users app-a-grp app-a-user1 app-a-user2
+  oadm groups add-users app-b-grp app-b-user1 app-b-user2
+  oadm groups add-users os-prod-grp app-a-app-b-admin1
+  oadm groups add-users os-platform-grp os-plat-admin1 os-plat-admin2
+ 
+  
+oadm new-project app-a-dev-proj --display-name="app-a-dev-proj"
+oadm new-project app-a-test-proj --display-name="app-a-test-proj"
+oadm new-project app-a-prod-proj --display-name="app-a-prod-proj"
+oadm new-project app-b-dev-proj --display-name="app-b-dev-proj"
+oadm new-project app-b-test-proj --display-name="app-b-test-proj"
+oadm new-project app-b-prod-proj --display-name="app-b-prod-proj"
+
+$ oc describe clusterPolicy default
+$ oc describe clusterPolicyBindings :default
+$ oc describe policyBindings :default
+oc describe policyBindings :default -n  app-a-dev-proj
+
+ Local Policy Operations : Use -n flag else local project is asumed.
+ oadm policy add-role-to-group <role> <groupname>
+ 
+ Cluster Policy Operations 
+ oadm policy add-cluster-role-to-group <role> <groupname>
+ 
+ oadm policy add-role-to-group admin app-a-grp-grp -n app-a-dev-proj
+  oadm policy add-role-to-group admin app-b-grp -n app-b-dev-proj
+   oadm policy add-role-to-group admin app-a-grp-grp -n app-a-test-proj
+  oadm policy add-role-to-group admin app-b-grp -n app-b-test-proj
+  
+  oadm policy add-role-to-group admin os-prod-grp -n app-a-prod-proj
+  oadm policy add-role-to-group admin os-prod-grp -n app-b-prod-proj
+
+  oc describe policyBindings :default -n app-a-prod-proj
+  
+  oadm policy add-cluster-role-to-group cluster-admin os-platform-grp
+  
+  # Explore Docker Registry Security and Image Pull Policies
+  Grant image pull rights to the service account for
+oc policy add-role-to-group system:image-puller system:serviceaccounts:app-a-prod-proj -n app-a-dev-proj
+oc policy add-role-to-group system:image-puller system:serviceaccounts:app-a-test-proj -n app-a-dev-proj
+
+oc policy add-role-to-group system:image-puller system:serviceaccounts:app-b-prod-proj -n app-b-dev-proj
+oc policy add-role-to-group system:image-puller system:serviceaccounts:app-b-test-proj -n app-b-dev-proj
+? should prod have pull access from test?
+
+Assign the registry-viewer role to the ose-production group so that the production administrators can see the image streams:
+oc policy add-role-to-group registry-viewer os-prod-grp -n  app-a-dev-proj
+oc policy add-role-to-group registry-viewer os-prod-grp -n  app-a-test-proj 
+
+oc policy add-role-to-group registry-viewer os-prod-grp -n  app-b-dev-proj
+oc policy add-role-to-group registry-viewer os-prod-grp -n  app-b-test-proj
+
+  
+ 
+ 
+
+
+
