@@ -45,7 +45,7 @@ oc new-app --template=mysql-ephemeral \
   --env=MYSQL_USER=produser,MYSQL_PASSWORD=prodpass,MYSQL_DATABASE=proddb  \
     -n app-a-prod-proj
     
-################
+################ Install Jenkins ###################
 
 As root on one of your master instances, create a persistent volume for Jenkins to store its persistent data:
 
@@ -53,11 +53,11 @@ echo '{
   "apiVersion": "v1",
   "kind": "PersistentVolume",
   "metadata": {
-    "name": "jenkins-volume"
+    "name": "jenkins-data"
   },
   "spec": {
     "capacity": {
-        "storage": "5Gi"
+        "storage": "1Gi"
         },
     "accessModes": [ "ReadWriteOnce" ],
     "nfs": {
@@ -82,10 +82,54 @@ oc login -u app-a-user1 --password 'pass@123'
 oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-dev-proj
 oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-test-proj
 
+
+
 oadm policy add-role-to-group admin os-prod-grp -n app-a-dev-proj
 oadm policy add-role-to-group admin os-prod-grp -n app-a-test-proj
 
+oc new-app jenkins-persistent -n sharedjenkins -p JENKINS_PASSWORD=pass@123
+edit the dc to set : timeoutSeconds: 6000
 Log in using admin as the username and pass@123 as the password.
+
+         volumeMounts:
+          - mountPath: /var/lib/jenkins
+            name: ${JENKINS_SERVICE_NAME}-data
+      volumes:
+      - name: jenkins-data
+        persistentVolumeClaim:
+          claimName: jenkins
+
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-prod-proj
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-dev-proj
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-test-proj
+
+*************Jenkins Pipelines*************************
+oc new-project pipeline-a-dev --description="Dev Env - With Pipelines" --display-name="A-DevEnvWithPipelines"
+oc new-project pipeline-a-test --description="Test Env - With Pipelines" --display-name="A-TestEnvWithPipelines"
+oc new-project pipeline-a-prod --description="Prod Env - With Pipelines" --display-name="A-ProdEnvWithPipelines"
+?Earlier we gave access to default and now to jenkins, why?
+Access to jenkins to deploy apps.
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:jenkins -n pipeline-a-dev
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:jenkins -n pipeline-a-test
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:jenkins -n pipeline-a-prod
+Image Puller access
+oc policy add-role-to-group system:image-puller system:serviceaccounts:A-TestEnvWithPipelines -n pipeline-a-dev
+oc policy add-role-to-group system:image-puller system:serviceaccounts:A-ProdEnvWithPipelines -n pipeline-a-dev
+oc project pipeline-a-dev
+oc new-app https://github.com/StefanoPicozzi/cotd.git -n pipeline-a-dev
+oc tag cotd:latest cotd:testready -n pipeline-a-dev
+oc tag cotd:testready cotd:prodready -n pipeline-a-dev
+oc new-app pipeline-a-dev/cotd:testready --name=cotd -n pipeline-a-test
+oc new-app pipeline-a-dev/cotd:prodready --name=cotd -n pipeline-a-prod
+oc expose service cotd -n pipeline-a-dev
+oc expose service cotd -n pipeline-a-test
+oc expose service cotd -n pipeline-a-prod
+Disable automatic deployment for all Deployment Configurations in our demonstration:
+oc get dc cotd -o yaml -n pipeline-a-dev | sed 's/automatic: true/automatic: false/g' | oc replace -f -
+oc get dc cotd -o yaml -n pipeline-a-test| sed 's/automatic: true/automatic: false/g' | oc replace -f -
+oc get dc cotd -o yaml -n pipeline-a-test | sed 's/automatic: true/automatic: false/g' | oc replace -f -
+
+
 
 
 
