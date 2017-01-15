@@ -1,3 +1,6 @@
+
+https://github.com/openshift/origin/blob/master/docs/generated/oadm_by_example_content.adoc#oadm-policy-add-role-to-user
+
 os-users-grp: Users with access to OpenShift Enterprise
 app-a-grp:App project developers
 app-a-user1
@@ -55,10 +58,14 @@ oc describe policyBindings :default -n  app-a-dev-proj
  Cluster Policy Operations 
  oadm policy add-cluster-role-to-group <role> <groupname>
  
- oadm policy add-role-to-group admin app-a-grp-grp -n app-a-dev-proj
-  oadm policy add-role-to-group admin app-b-grp -n app-b-dev-proj
-   oadm policy add-role-to-group admin app-a-grp-grp -n app-a-test-proj
-  oadm policy add-role-to-group admin app-b-grp -n app-b-test-proj
+# Assign the view role to users from the app-a-grp developer group on the app-a-prod-proj environment project:
+oadm policy add-role-to-group view app-a-grp -n app-a-prod-proj
+
+
+ oadm policy add-role-to-group admin app-a-grp -n app-a-dev-proj
+ oadm policy add-role-to-group admin app-b-grp -n app-b-dev-proj
+ oadm policy add-role-to-group admin app-a-grp -n app-a-test-proj
+ oadm policy add-role-to-group admin app-b-grp -n app-b-test-proj
   
   oadm policy add-role-to-group admin os-prod-grp -n app-a-prod-proj
   oadm policy add-role-to-group admin os-prod-grp -n app-b-prod-proj
@@ -83,7 +90,12 @@ oc policy add-role-to-group registry-viewer os-prod-grp -n  app-a-test-proj
 oc policy add-role-to-group registry-viewer os-prod-grp -n  app-b-dev-proj
 oc policy add-role-to-group registry-viewer os-prod-grp -n  app-b-test-proj
 
-  
+# Remove the user’s default permission to create her own projects and allow only production administrators to create project:
+oadm policy remove-cluster-role-from-group self-provisioner system:authenticated
+oadm policy remove-cluster-role-from-group self-provisioner system:authenticated:oauth
+
+provide access to a group so that its members can create projects for everyone.
+oadm policy add-cluster-role-to-group self-provisioner <<group-name>>
  
  
 
