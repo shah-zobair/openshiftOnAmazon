@@ -1,0 +1,92 @@
+oc login -u app-b-user1 --password 'pass@123'
+oc project app-b-dev-proj
+oc new-app ruby~https://github.com/openshift/sinatra-example --name=sinatra -n app-b-dev-proj
+Wait for the build to complete:
+oc logs -f build/sinatra-1 -n app-b-dev-proj
+Once the application is finished building, examine the tags:
+oc describe imagestream sinatra
+oc tag sinatra:latest sinatra:test
+Tag the latest image as prod and test:
+oc tag sinatra:latest sinatra:prod
+
+Login as app-a-user1
+oc login -u app-a-user1 --password 'pass@123'
+oc project app-a-dev-proj
+oc new-app --template=mysql-ephemeral \
+  --param=MYSQL_USER=devuser,MYSQL_PASSWORD=devpass,MYSQL_DATABASE=devdb,DATABASE_SERVICE_NAME=database \
+    -n app-a-dev-proj
+ oc new-app ruby~https://github.com/openshift/ruby-hello-world --name=portalapp \
+  --env=MYSQL_USER=devuser,MYSQL_PASSWORD=devpass,MYSQL_DATABASE=devdb \
+    -n app-a-dev-proj
+   
+# Tag the portalapp:latest image that you created in the previous step as portalapp:TestingCandidate and portalapp:ProdReady
+oc tag portalapp:latest portalapp:TestingCandidate -n app-a-dev-proj
+oc tag portalapp:latest portalapp:ProdReady -n app-a-dev-proj
+
+oc describe imagestream portalapp -n app-a-dev-proj
+Now deploy the app in test env.
+oc project app-a-test-proj
+oc new-app --template=mysql-ephemeral \
+  --param=MYSQL_USER=testuser,MYSQL_PASSWORD=testpass,MYSQL_DATABASE=testdb,DATABASE_SERVICE_NAME=database \
+   -n app-a-test-proj
+# Create a deployment configuration for portalapp in the portalapp-test project based on the portalapp-dev/portalapp:TestingCandidate image, and configure the portalapp deployment configuration to use the Testing environment’s database instance:   
+ oc new-app app-a-dev-proj/portalapp:TestingCandidate --name=portalapp \
+  --env=MYSQL_USER=testuser,MYSQL_PASSWORD=testpass,MYSQL_DATABASE=testdb  \
+  -n app-a-test-proj
+  
+  Deploy as admin:
+  oc login -u app-a-app-b-admin1 --password 'appabadmin2017'
+  oc project app-a-prod-proj
+  oc new-app --template=mysql-ephemeral \
+  --param=MYSQL_USER=produser,MYSQL_PASSWORD=prodpass,MYSQL_DATABASE=proddb,DATABASE_SERVICE_NAME=database \
+  -n app-a-prod-proj
+  
+   oc new-app app-a-dev-proj/portalapp:ProdReady --name=portalapp \
+  --env=MYSQL_USER=produser,MYSQL_PASSWORD=prodpass,MYSQL_DATABASE=proddb  \
+    -n app-a-prod-proj
+    
+################
+
+As root on one of your master instances, create a persistent volume for Jenkins to store its persistent data:
+
+echo '{
+  "apiVersion": "v1",
+  "kind": "PersistentVolume",
+  "metadata": {
+    "name": "jenkins-volume"
+  },
+  "spec": {
+    "capacity": {
+        "storage": "5Gi"
+        },
+    "accessModes": [ "ReadWriteOnce" ],
+    "nfs": {
+        "path": "/osdata/jenkins",
+        "server": "172.19.23.32"
+    }
+  }
+}' | oc create -f -
+
+oadm policy add-cluster-role-to-group self-provisioner os-prod-grp
+Deploy as admin:
+  oc login -u app-a-app-b-admin1 --password 'appabadmin2017'
+  oc new-project sharedjenkins --description "Shared Jenkins Environment"
+  oc new-app jenkins-persistent -n sharedjenkins -p JENKINS_PASSWORD=pass@123
+
+Grant Jenkins Project Permissions to Environments
+Jenkins invokes the OpenShift Enterprise API to initiate builds, scale deployments, and tag images. It requires edit privileges on the project.
+  As app-a-app-b-admin1, a member of the os-prod-grp group, add the edit role to the default service account in the sharedjenkins project for each portalapp environment:
+
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-prod-proj
+oc login -u app-a-user1 --password 'pass@123'
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-dev-proj
+oc policy add-role-to-user edit system:serviceaccount:sharedjenkins:default -n app-a-test-proj
+
+oadm policy add-role-to-group admin os-prod-grp -n app-a-dev-proj
+oadm policy add-role-to-group admin os-prod-grp -n app-a-test-proj
+
+Log in using admin as the username and pass@123 as the password.
+
+
+
+
