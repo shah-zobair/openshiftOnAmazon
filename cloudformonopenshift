@@ -1,3 +1,4 @@
+https://github.com/debianmaster
 ## Install CloudForms on OpensShift
 
 
@@ -34,7 +35,7 @@ Hit  https://cfme4-cloudforms.10.0.0.249.xip.io/
 username/password:    admin/smartvm     
 Hit https://cfme4-cloudforms.10.0.0.249.xip.io/ems_container/new     
 
-Endpoints    
+Endpoints     
 kubernetes.default.svc.cluster.local    port 443  and token
   
 Hawkular    
